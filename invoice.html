@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Green Travels - Invoice & Receipt Generator</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Hind Siliguri', sans-serif;
+      background-color: #f3f4f6;
+    }
+    
+    @media print {
+      @page {
+        size: A4 portrait;
+        margin: 0;
+      }
+      body {
+        background: white;
+        padding: 0;
+        margin: 0;
+      }
+      .no-print {
+        display: none !important;
+      }
+      .print-area {
+        box-shadow: none !important;
+        border: none !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        padding: 12mm 15mm !important;
+        margin: 0 !important;
+        border-radius: 0 !important;
+      }
+    }
+
+    .a4-page {
+      width: 210mm;
+      min-height: 297mm;
+      padding: 15mm;
+      margin: auto;
+      background: white;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    }
+  </style>
+</head>
+<body class="p-4 md:p-8">
+
+  <!-- Control Panel / Form Section -->
+  <div class="bg-white shadow-md mx-auto mb-8 p-6 border border-gray-200 rounded-xl max-w-5xl no-print">
+    <div class="flex justify-between items-center mb-6 pb-4 border-b">
+      <div>
+        <h1 class="font-bold text-emerald-700 text-2xl">Green Travels - ইনভয়েস জেনারেটর</h1>
+        <p class="text-gray-500 text-sm">গ্রাহকের জন্য সহজে রশিদ তৈরি ও প্রিন্ট করুন</p>
+      </div>
+      <div class="flex gap-2">
+        <button onclick="saveInvoice()" class="flex items-center gap-1 bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg font-medium text-white text-sm transition">
+          💾 সেভ করুন
+        </button>
+        <button onclick="window.print()" class="flex items-center gap-1 bg-emerald-600 hover:bg-emerald-700 shadow px-5 py-2 rounded-lg font-medium text-white text-sm transition">
+          🖨️ A4 প্রিন্ট করুন
+        </button>
+      </div>
+    </div>
+
+    <!-- Inputs Form -->
+    <div class="gap-4 grid grid-cols-1 md:grid-cols-3 mb-6">
+      <div>
+        <label class="block mb-1 font-semibold text-gray-600 text-xs">গ্রাহকের নাম (Client Name):</label>
+        <input type="text" id="inClientName" oninput="updateInvoice()" placeholder="নাম লিখুন" class="p-2 border rounded outline-none focus:ring-2 focus:ring-emerald-500 w-full text-sm">
+      </div>
+      <div>
+        <label class="block mb-1 font-semibold text-gray-600 text-xs">মোবাইল নম্বর (Phone):</label>
+        <input type="text" id="inClientPhone" oninput="updateInvoice()" placeholder="017XXXXXXXX" class="p-2 border rounded outline-none focus:ring-2 focus:ring-emerald-500 w-full text-sm">
+      </div>
+      <div>
+        <label class="block mb-1 font-semibold text-gray-600 text-xs">ঠিকানা (Address):</label>
+        <input type="text" id="inClientAddress" oninput="updateInvoice()" placeholder="ঠিকানা" class="p-2 border rounded outline-none focus:ring-2 focus:ring-emerald-500 w-full text-sm">
+      </div>
+      <div>
+        <label class="block mb-1 font-semibold text-gray-600 text-xs">ইনভয়েস নং (Invoice No):</label>
+        <input type="text" id="inInvoiceNo" oninput="updateInvoice()" class="p-2 border rounded outline-none focus:ring-2 focus:ring-emerald-500 w-full text-sm">
+      </div>
+      <div>
+        <label class="block mb-1 font-semibold text-gray-600 text-xs">তারিখ (Date):</label>
+        <input type="date" id="inInvoiceDate" onchange="updateInvoice()" class="p-2 border rounded outline-none focus:ring-2 focus:ring-emerald-500 w-full text-sm">
+      </div>
+      <div>
+        <label class="block mb-1 font-semibold text-gray-600 text-xs">পেমেন্ট স্টেটাস:</label>
+        <select id="inStatus" onchange="updateInvoice()" class="p-2 border rounded outline-none focus:ring-2 focus:ring-emerald-500 w-full text-sm">
+          <option value="PAID">PAID (পরিশোধিত)</option>
+          <option value="PARTIAL">PARTIAL (আংশিক পরিশোধিত)</option>
+          <option value="DUE">UNPAID (বকেয়া)</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Dynamic Items Table Inputs -->
+    <div class="mb-4">
+      <h3 class="mb-2 font-semibold text-gray-700 text-sm">সেবার বিবরণী (Items):</h3>
+      <div id="itemInputsContainer" class="space-y-2">
+        <!-- Dynamic row added by JS -->
+      </div>
+      <button onclick="addItemRow()" class="flex items-center gap-1 bg-gray-100 hover:bg-gray-200 mt-3 px-3 py-1.5 border border-emerald-300 rounded font-semibold text-emerald-700 text-xs">
+        ➕ নতুন সেবা যোগ করুন
+      </button>
+    </div>
+
+    <!-- Discount & Paid Inputs -->
+    <div class="gap-4 grid grid-cols-1 md:grid-cols-2 pt-4 border-t">
+      <div>
+        <label class="block mb-1 font-semibold text-gray-600 text-xs">ডিসকাউন্ট (Discount Tk):</label>
+        <input type="number" id="inDiscount" value="0" oninput="updateInvoice()" class="p-2 border rounded outline-none focus:ring-2 focus:ring-emerald-500 w-full text-sm">
+      </div>
+      <div>
+        <label class="block mb-1 font-semibold text-gray-600 text-xs">জমা গ্রহণ (Paid Amount Tk):</label>
+        <input type="number" id="inPaid" value="0" oninput="updateInvoice()" class="p-2 border rounded outline-none focus:ring-2 focus:ring-emerald-500 w-full text-sm">
+      </div>
+    </div>
+
+    <!-- Saved Invoices Section -->
+    <div class="mt-8 pt-4 border-t">
+      <h3 class="mb-2 font-bold text-gray-700 text-sm">📁 সংরক্ষিত ইনভয়েস তালিকা (Saved History):</h3>
+      <div id="savedList" class="flex flex-wrap gap-2 text-gray-600 text-xs">
+        <span class="text-gray-400">কোনো ইনভয়েস সেভ করা নেই।</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- A4 Printable Preview -->
+  <div class="flex flex-col justify-between rounded-lg print-area a4-page">
+    <div>
+      <!-- Header / Logo Section -->
+      <div class="flex justify-between items-start pb-4 border-emerald-600 border-b-2">
+        <div class="flex items-center gap-3">
+          <!-- Logo Circle representation -->
+          <div class="flex justify-center items-center bg-emerald-50 p-1 border-2 border-emerald-500 rounded-full w-14 h-14">
+            <span class="font-black text-emerald-700 text-xl">GT</span>
+          </div>
+          <div>
+            <h1 class="font-extrabold text-emerald-700 text-3xl tracking-wide">GREEN TRAVELS</h1>
+            <p class="font-medium text-gray-600 text-xs">ভ্রমণ ও ভিসা সহায়তার নির্ভরযোগ্য প্রতিষ্ঠান</p>
+          </div>
+        </div>
+        <div class="space-y-0.5 text-gray-600 text-xs text-right">
+          <p class="font-semibold text-gray-800">অফিস ঠিকানা:</p>
+          <p>১৪ নং জহুর শপিং কমপ্লেক্স (২য় তলা)</p>
+          <p>হাজারী লেন, চট্টগ্রাম।</p>
+          <p>📞 01349-874867</p>
+          <p>✉️ greentravels449@gmail.com</p>
+        </div>
+      </div>
+
+      <!-- Money Receipt Title Badge -->
+      <div class="flex justify-between items-center my-6">
+        <div>
+          <span id="outStatusBadge" class="bg-emerald-100 px-3 py-1 border border-emerald-300 rounded-full font-bold text-emerald-800 text-xs">
+            PAID
+          </span>
+        </div>
+        <div class="bg-emerald-700 shadow-sm px-6 py-1.5 rounded-md font-bold text-white text-lg">
+          MONEY RECEIPT / ইনভয়েস
+        </div>
+        <div class="text-xs text-right">
+          <p><span class="font-bold text-gray-700">রশিদ নং:</span> <span id="outInvoiceNo">#GT-1001</span></p>
+          <p><span class="font-bold text-gray-700">তারিখ:</span> <span id="outInvoiceDate">--</span></p>
+        </div>
+      </div>
+
+      <!-- Client Details Box -->
+      <div class="gap-4 grid grid-cols-2 bg-gray-50 mb-6 p-4 border border-gray-200 rounded-lg text-xs">
+        <div>
+          <p class="mb-0.5 text-gray-500">গ্রাহকের নাম (Client Name):</p>
+          <p id="outClientName" class="font-bold text-gray-800 text-sm">--</p>
+        </div>
+        <div>
+          <p class="mb-0.5 text-gray-500">মোবাইল নম্বর (Phone):</p>
+          <p id="outClientPhone" class="font-semibold text-gray-800">--</p>
+        </div>
+        <div class="col-span-2 pt-2 border-gray-200 border-t">
+          <p class="mb-0.5 text-gray-500">ঠিকানা (Address):</p>
+          <p id="outClientAddress" class="text-gray-800">--</p>
+        </div>
+      </div>
+
+      <!-- Items Table -->
+      <table class="mb-6 w-full text-xs border-collapse">
+        <thead>
+          <tr class="bg-emerald-700 text-white">
+            <th class="p-2 border border-emerald-700 w-12 text-center">ক্র.নং</th>
+            <th class="p-2 border border-emerald-700 text-left">সেবার বিবরণ (Service Description)</th>
+            <th class="p-2 border border-emerald-700 w-20 text-center">পরিমাণ</th>
+            <th class="p-2 border border-emerald-700 w-28 text-right">মূল্য (Tk)</th>
+            <th class="p-2 border border-emerald-700 w-32 text-right">মোট (Tk)</th>
+          </tr>
+        </thead>
+        <tbody id="outItemsBody">
+          <!-- Rows inserted via JS -->
+        </tbody>
+      </table>
+
+      <!-- Calculations Summary -->
+      <div class="flex justify-end mb-8">
+        <div class="space-y-1.5 w-64 text-xs">
+          <div class="flex justify-between py-1 border-gray-200 border-b text-gray-600">
+            <span>সর্বমোট (Sub Total):</span>
+            <span id="outSubTotal" class="font-semibold">0.00 Tk</span>
+          </div>
+          <div class="flex justify-between py-1 border-gray-200 border-b text-gray-600">
+            <span>ডিসকাউন্ট (Discount):</span>
+            <span id="outDiscount" class="font-semibold text-red-600">0.00 Tk</span>
+          </div>
+          <div class="flex justify-between py-1.5 border-gray-800 border-b-2 font-bold text-gray-800 text-sm">
+            <span>মোট প্রদেয় (Grand Total):</span>
+            <span id="outGrandTotal">0.00 Tk</span>
+          </div>
+          <div class="flex justify-between py-1 border-gray-200 border-b font-bold text-emerald-700">
+            <span>জমা দেওয়া হয়েছে (Paid):</span>
+            <span id="outPaid">0.00 Tk</span>
+          </div>
+          <div class="flex justify-between py-1 font-bold text-red-600">
+            <span>অবশিষ্ট বকেয়া (Due):</span>
+            <span id="outDue">0.00 Tk</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Signatures & Footer -->
+    <div class="pt-12">
+      <div class="flex justify-between items-end mb-6 text-gray-600 text-xs">
+        <div class="pt-1 border-gray-400 border-t border-dashed w-40 text-center">
+          গ্রাহকের স্বাক্ষর
+        </div>
+        <div class="w-48 text-center">
+          <div class="flex justify-center items-center h-10 text-[10px] text-gray-300 italic">
+            [ সিল / স্ট্যাম্প ]
+          </div>
+          <div class="pt-1 border-gray-400 border-t border-dashed font-semibold text-gray-800">
+            কর্তৃপক্ষের স্বাক্ষর
+          </div>
+        </div>
+      </div>
+      
+      <div class="pt-2 border-t text-[10px] text-gray-400 text-center">
+        গ্রীন ট্রাভেলস-এর সেবা গ্রহণ করার জন্য আপনাকে ধন্যবাদ। সুখে কাটুক আপনার ভ্রমণ।
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let items = [
+      { desc: 'ইন্ডিয়া মেডিকেল ভিসা প্রসেসিং', qty: 1, price: 1500 }
+    ];
+
+    // Initialize Page
+    window.onload = function() {
+      document.getElementById('inInvoiceNo').value = 'GT-' + Math.floor(1000 + Math.random() * 9000);
+      document.getElementById('inInvoiceDate').value = new Date().toISOString().split('T')[0];
+      renderItemInputs();
+      updateInvoice();
+      loadSavedHistory();
+    };
+
+    function renderItemInputs() {
+      const container = document.getElementById('itemInputsContainer');
+      container.innerHTML = '';
+      
+      items.forEach((item, index) => {
+        const row = document.createElement('div');
+        row.className = "flex gap-2 items-center";
+        row.innerHTML = `
+          <input type="text" value="${item.desc}" oninput="updateItem(${index}, 'desc', this.value)" placeholder="সেবার বিবরণ" class="flex-1 p-1.5 border rounded outline-none text-xs">
+          <input type="number" value="${item.qty}" oninput="updateItem(${index}, 'qty', this.value)" placeholder="পরিমাণ" class="p-1.5 border rounded outline-none w-16 text-xs text-center">
+          <input type="number" value="${item.price}" oninput="updateItem(${index}, 'price', this.value)" placeholder="মূল্য" class="p-1.5 border rounded outline-none w-24 text-xs text-right">
+          <button onclick="removeItemRow(${index})" class="px-2 font-bold text-red-500 hover:text-red-700 text-sm">✕</button>
+        `;
+        container.appendChild(row);
+      });
+    }
+
+    function addItemRow() {
+      items.push({ desc: '', qty: 1, price: 0 });
+      renderItemInputs();
+      updateInvoice();
+    }
+
+    function removeItemRow(index) {
+      if (items.length > 1) {
+        items.splice(index, 1);
+        renderItemInputs();
+        updateInvoice();
+      }
+    }
+
+    function updateItem(index, field, value) {
+      items[index][field] = field === 'desc' ? value : Number(value);
+      updateInvoice();
+    }
+
+    function updateInvoice() {
+      // Header details
+      const clientName = document.getElementById('inClientName').value || 'গ্রাহকের নাম';
+      const clientPhone = document.getElementById('inClientPhone').value || 'মোবাইল নম্বর';
+      const clientAddress = document.getElementById('inClientAddress').value || 'ঠিকানা';
+      const invoiceNo = document.getElementById('inInvoiceNo').value || '#GT-1001';
+      const invoiceDate = document.getElementById('inInvoiceDate').value || new Date().toISOString().split('T')[0];
+      const status = document.getElementById('inStatus').value;
+
+      document.getElementById('outClientName').innerText = clientName;
+      document.getElementById('outClientPhone').innerText = clientPhone;
+      document.getElementById('outClientAddress').innerText = clientAddress;
+      document.getElementById('outInvoiceNo').innerText = invoiceNo;
+      document.getElementById('outInvoiceDate').innerText = invoiceDate;
+
+      // Status Badge
+      const statusBadge = document.getElementById('outStatusBadge');
+      statusBadge.innerText = status;
+      if (status === 'PAID') {
+        statusBadge.className = 'px-3 py-1 bg-emerald-100 text-emerald-800 border border-emerald-300 font-bold text-xs rounded-full';
+      } else if (status === 'PARTIAL') {
+        statusBadge.className = 'px-3 py-1 bg-yellow-100 text-yellow-800 border border-yellow-300 font-bold text-xs rounded-full';
+      } else {
+        statusBadge.className = 'px-3 py-1 bg-red-100 text-red-800 border border-red-300 font-bold text-xs rounded-full';
+      }
+
+      // Render Items Table
+      const outBody = document.getElementById('outItemsBody');
+      outBody.innerHTML = '';
+      
+      let subTotal = 0;
+      items.forEach((item, i) => {
+        const itemTotal = (item.qty || 0) * (item.price || 0);
+        subTotal += itemTotal;
+
+        const tr = document.createElement('tr');
+        tr.className = i % 2 === 0 ? 'bg-white' : 'bg-gray-50';
+        tr.innerHTML = `
+          <td class="p-2 border border-gray-300 text-center">${i + 1}</td>
+          <td class="p-2 border border-gray-300 font-medium">${item.desc || '--'}</td>
+          <td class="p-2 border border-gray-300 text-center">${item.qty || 0}</td>
+          <td class="p-2 border border-gray-300 text-right">${(item.price || 0).toLocaleString('en-IN')} Tk</td>
+          <td class="p-2 border border-gray-300 font-semibold text-right">${itemTotal.toLocaleString('en-IN')} Tk</td>
+        `;
+        outBody.appendChild(tr);
+      });
+
+      // Calculations
+      const discount = Number(document.getElementById('inDiscount').value) || 0;
+      const paid = Number(document.getElementById('inPaid').value) || 0;
+      const grandTotal = Math.max(0, subTotal - discount);
+      const due = Math.max(0, grandTotal - paid);
+
+      document.getElementById('outSubTotal').innerText = subTotal.toLocaleString('en-IN') + ' Tk';
+      document.getElementById('outDiscount').innerText = discount.toLocaleString('en-IN') + ' Tk';
+      document.getElementById('outGrandTotal').innerText = grandTotal.toLocaleString('en-IN') + ' Tk';
+      document.getElementById('outPaid').innerText = paid.toLocaleString('en-IN') + ' Tk';
+      document.getElementById('outDue').innerText = due.toLocaleString('en-IN') + ' Tk';
+    }
+
+    function saveInvoice() {
+      const invoiceData = {
+        invoiceNo: document.getElementById('inInvoiceNo').value,
+        clientName: document.getElementById('inClientName').value,
+        clientPhone: document.getElementById('inClientPhone').value,
+        date: document.getElementById('inInvoiceDate').value,
+        items: items,
+        discount: document.getElementById('inDiscount').value,
+        paid: document.getElementById('inPaid').value,
+        status: document.getElementById('inStatus').value
+      };
+
+      let saved = JSON.parse(localStorage.getItem('gt_invoices') || '[]');
+      saved.push(invoiceData);
+      localStorage.setItem('gt_invoices', JSON.stringify(saved));
+      alert('ইনভয়েসটি সিস্টেমে সেভ করা হয়েছে!');
+      loadSavedHistory();
+    }
+
+    function loadSavedHistory() {
+      let saved = JSON.parse(localStorage.getItem('gt_invoices') || '[]');
+      const container = document.getElementById('savedList');
+      if (saved.length === 0) {
+        container.innerHTML = '<span class="text-gray-400">কোনো ইনভয়েস সেভ করা নেই।</span>';
+        return;
+      }
+      
+      container.innerHTML = '';
+      saved.reverse().forEach((inv, index) => {
+        const btn = document.createElement('button');
+        btn.className = "bg-gray-100 hover:bg-emerald-50 border border-gray-300 px-3 py-1 rounded text-gray-700 flex items-center gap-1";
+        btn.innerHTML = `📄 ${inv.invoiceNo} (${inv.clientName || 'গ্রাহক'})`;
+        btn.onclick = () => loadInvoiceData(inv);
+        container.appendChild(btn);
+      });
+    }
+
+    function loadInvoiceData(data) {
+      document.getElementById('inInvoiceNo').value = data.invoiceNo;
+      document.getElementById('inClientName').value = data.clientName || '';
+      document.getElementById('inClientPhone').value = data.clientPhone || '';
+      document.getElementById('inInvoiceDate').value = data.date || '';
+      document.getElementById('inDiscount').value = data.discount || 0;
+      document.getElementById('inPaid').value = data.paid || 0;
+      document.getElementById('inStatus').value = data.status || 'PAID';
+      
+      items = data.items || [];
+      renderItemInputs();
+      updateInvoice();
+    }
+  </script>
+</body>
+</html>
